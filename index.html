@@ -58,6 +58,16 @@ details .in{padding:0 16px 16px}
 .entlist td input:focus{border-color:var(--line);background:#fff;outline:none}
 .hidden{display:none}
 .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.pvwrap.hidden{display:none}
+.pvwrap{position:fixed;inset:0;background:rgba(20,36,42,.6);z-index:50;display:flex;flex-direction:column}
+.pvbar{background:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.pvbar b{flex:1;color:var(--teal);font-size:15px}
+.pvscroll{flex:1;overflow:auto;padding:20px 10px}
+.pvpage{background:#fff;width:794px;min-height:1123px;margin:0 auto 20px;padding:24px 67px 30px;box-shadow:0 4px 16px rgba(0,0,0,.25);position:relative;font-family:Arial,Tahoma,sans-serif;font-size:14.6px;color:#000;display:flex;flex-direction:column}
+.pvhdr{margin-bottom:14px}.pvbody{flex:1}.pvftr{margin-top:10px}
+.pvno{position:absolute;bottom:6px;left:12px;font-size:11px;color:#9aa}
+.pvsheets{max-width:1100px;margin:0 auto;background:var(--bg);padding:6px 14px 16px;border-radius:12px}
+@media(max-width:820px){.pvpage{transform-origin:top right;zoom:.46}}
 @media(max-width:760px){.steps{grid-template-columns:1fr}header.top{flex-wrap:wrap;padding:14px 16px}header.top h1{font-size:17px}header.top p{font-size:12px}header.top a{order:3;width:100%;text-align:center}}
 </style>
 </head>
@@ -123,9 +133,9 @@ details .in{padding:0 16px 16px}
   <div class="card hidden" id="outCard">
     <h2>3. التحميل</h2>
     <div class="row">
-      <button class="btn big" id="dlLetters">📄 تحميل الخطابات (Word)</button>
-      <button class="btn big" id="dlRecords">📁 تحميل سجلات المتدربين للطباعة (Word)</button>
-      <button class="btn big" id="dlRegister">📊 تحميل سجل التدريب (Excel)</button>
+      <div style="display:flex;gap:4px"><button class="btn big" id="dlLetters">📄 تحميل الخطابات (Word)</button><button class="btn2" id="pvLetters" title="معاينة">👁 معاينة</button></div>
+      <div style="display:flex;gap:4px"><button class="btn big" id="dlRecords">📁 تحميل سجلات المتدربين للطباعة (Word)</button><button class="btn2" id="pvRecords" title="معاينة">👁 معاينة</button></div>
+      <div style="display:flex;gap:4px"><button class="btn big" id="dlRegister">📊 تحميل سجل التدريب (Excel)</button><button class="btn2" id="pvRegister" title="معاينة">👁 معاينة</button></div>
       <span style="font-size:13px;color:var(--muted)">لمن اختيرت له جهة فقط. سجل كل متدرب 6 صفحات من نماذج الدليل الإجرائي: البيانات وكشف الحضور، خطة التدريب (6)، تقييم الجهة (7)، الزيارات (8)، التقرير الفني (11)، الخلاصة (13).</span>
     </div>
     <div class="msg" id="outMsg"></div>
@@ -197,6 +207,12 @@ details .in{padding:0 16px 16px}
     </div>
   </div>
 </main>
+
+<div class="pvwrap hidden" id="pv">
+  <div class="pvbar"><b id="pvTitle"></b><span id="pvNote" style="font-size:12px;color:var(--muted)"></span><button class="btn" id="pvDl">⬇ تحميل</button><button class="btn2" id="pvClose">✕ إغلاق</button></div>
+  <div class="msg" id="pvMsg" style="margin:0"></div>
+  <div class="pvscroll" id="pvBody"></div>
+</div>
 
 <script>/*!
 
@@ -449,12 +465,15 @@ async function baseDocxZip(S){
   zip.file("word/settings.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:defaultTabStop w:val="720"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>`);
   zip.file("word/styles.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="${FONT}" w:hAnsi="${FONT}" w:cs="${FONT}"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="en-US" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:bidi/><w:spacing w:after="60" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`);
   zip.file("word/header1.xml", headerXml(S));
+  zip.file("word/footer1.xml", footerXml(S));
+  return zip;
+}
+function footerXml(S){
   const fparts = [];
   if ((S.coop || "").trim()) fparts.push({t: "مشرف التدريب التعاوني بالكلية: " + S.coop});
   if ((S.coopPhone || "").trim()) fparts.push({t: (fparts.length ? "   —   " : "") + "جوال: " + S.coopPhone});
   if ((S.email || "").trim()){ fparts.push({t: (fparts.length ? "   —   " : "") + "البريد: "}); fparts.push({t: S.email, ltr: true}); }
-  zip.file("word/footer1.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${fparts.length ? para("", {bottomBorder: "single", after: 40, line: 120}) + para(fparts, {jc: "center", sz: 17, color: "0F4C5C", b: true, after: 0}) : para("", {after: 0})}</w:ftr>`);
-  return zip;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${fparts.length ? para("", {bottomBorder: "single", after: 40, line: 120}) + para(fparts, {jc: "center", sz: 17, color: "0F4C5C", b: true, after: 0}) : para("", {after: 0})}</w:ftr>`;
 }
 function docXml(body){
   const sect = `<w:sectPr><w:headerReference w:type="default" r:id="rId2"/><w:footerReference w:type="default" r:id="rId4"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="2350" w:right="1000" w:bottom="900" w:left="1000" w:header="350" w:footer="250" w:gutter="0"/><w:bidi/></w:sectPr>`;
@@ -583,6 +602,77 @@ async function buildRecordsDocx(items, S){
   return zip.generateAsync({type: "uint8array", compression: "DEFLATE"});
 }
 
+/* ---------- HTML preview of generated Word content ---------- */
+const WNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+function wAttr(el, name){ return el ? el.getAttributeNS(WNS, name) || el.getAttribute("w:" + name) : null; }
+function wKids(el, name){ return el ? [...el.childNodes].filter(n => n.nodeType === 1 && n.localName === name) : []; }
+function wKid(el, name){ return wKids(el, name)[0] || null; }
+function previewPages(bodyXml, hdrXml, ftrXml){
+  const P = new DOMParser();
+  const ns = `xmlns:w="${WNS}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"`;
+  const parse = x => P.parseFromString(`<root ${ns}>${x.replace(/<\?xml[^>]*\?>/, "")}</root>`, "application/xml").documentElement;
+  const tw = v => Math.round((+v || 0) / 15);
+  function runHtml(r){
+    const rp = wKid(r, "rPr");
+    let st = "";
+    if (wKid(rp, "b")) st += "font-weight:700;";
+    const sz = wKid(rp, "sz"); if (sz) st += `font-size:${(+wAttr(sz, "val")) / 2 * 1.333}px;`;
+    const col = wKid(rp, "color"); if (col) st += `color:#${wAttr(col, "val")};`;
+    let h = "";
+    for (const c of r.childNodes){
+      if (c.nodeType !== 1) continue;
+      if (c.localName === "t") h += `<span style="${st}"${rp && !wKid(rp, "rtl") ? ' dir="ltr"' : ""}>${esc(c.textContent)}</span>`;
+      else if (c.localName === "drawing") h += `<img src="data:image/jpeg;base64,${LOGO_B64}" style="height:80px">`;
+    }
+    return h;
+  }
+  function pHtml(p){
+    const pp = wKid(p, "pPr");
+    const jcEl = wKid(pp, "jc"); const jc = jcEl ? wAttr(jcEl, "val") : "right";
+    const align = jc === "both" ? "justify" : jc === "center" ? "center" : jc === "left" ? "left" : "right";
+    const sp = wKid(pp, "spacing"); const after = sp ? tw(wAttr(sp, "after")) : 4; const before = sp ? tw(wAttr(sp, "before")) : 0;
+    const line = sp && wAttr(sp, "line") ? (+wAttr(sp, "line")) / 240 * 1.25 : 1.35;
+    const bdr = wKid(wKid(pp, "pBdr"), "bottom"); const bb = bdr ? `border-bottom:1px ${wAttr(bdr, "val") === "dashed" ? "dashed" : "solid"} #5f7a80;padding-bottom:2px;` : "";
+    const inner = wKids(p, "r").map(runHtml).join("");
+    return `<div style="text-align:${align};margin:${before}px 0 ${after}px;line-height:${line};${bb}min-height:${inner ? 0 : 6}px">${inner}</div>`;
+  }
+  function tblHtml(t){
+    const tp = wKid(t, "tblPr"); const tb = wKid(wKid(tp, "tblBorders"), "top");
+    const bordered = !(tb && wAttr(tb, "val") === "nil");
+    const cols = wKids(wKid(t, "tblGrid"), "gridCol").map(g => tw(wAttr(g, "w")));
+    const total = cols.reduce((a, c) => a + c, 0);
+    let h = `<table style="width:${total}px;max-width:100%;border-collapse:collapse;margin:0 auto;table-layout:fixed"><colgroup>${cols.map(c => `<col style="width:${c}px">`).join("")}</colgroup>`;
+    for (const tr of wKids(t, "tr")){
+      const hEl = wKid(wKid(tr, "trPr"), "trHeight");
+      h += `<tr style="height:${hEl ? tw(wAttr(hEl, "val")) : 20}px">`;
+      for (const tc of wKids(tr, "tc")){
+        const pr = wKid(tc, "tcPr"); const span = wKid(pr, "gridSpan"); const shd = wKid(pr, "shd");
+        const fill = shd ? wAttr(shd, "fill") : null;
+        h += `<td colspan="${span ? wAttr(span, "val") : 1}" style="vertical-align:middle;padding:1px 5px;${bordered ? "border:1px solid #8fa6ab;" : ""}${fill ? `background:#${fill};` : ""}">${blocks(tc)}</td>`;
+      }
+      h += "</tr>";
+    }
+    return h + "</table>";
+  }
+  function blocks(el){ return [...el.childNodes].filter(n => n.nodeType === 1).map(n => n.localName === "p" ? pHtml(n) : n.localName === "tbl" ? tblHtml(n) : "").join(""); }
+  const hdr = blocks(parse(hdrXml.replace(/^[\s\S]*?<w:hdr[^>]*>/, "").replace(/<\/w:hdr>[\s\S]*$/, "")));
+  const ftr = blocks(parse(ftrXml.replace(/^[\s\S]*?<w:ftr[^>]*>/, "").replace(/<\/w:ftr>[\s\S]*$/, "")));
+  const pages = [[]];
+  for (const n of [...parse(bodyXml).childNodes].filter(n => n.nodeType === 1)){
+    if (n.localName === "p"){
+      const pp = wKid(n, "pPr");
+      const brk = [...n.getElementsByTagNameNS(WNS, "br")].some(b => wAttr(b, "type") === "page");
+      if ((wKid(pp, "pageBreakBefore") || brk) && pages[pages.length - 1].length) pages.push([]);
+      if (brk) continue;
+      pages[pages.length - 1].push(pHtml(n));
+    } else if (n.localName === "tbl") pages[pages.length - 1].push(tblHtml(n));
+  }
+  return pages.map((pg, i) => `<div class="pvpage"><div class="pvhdr">${hdr}</div><div class="pvbody">${pg.join("")}</div><div class="pvftr">${ftr}</div><div class="pvno">${i + 1} / ${pages.length}</div></div>`).join("");
+}
+function previewSheets(sheets){
+  return sheets.map(sh => `<h3 style="color:#0f4c5c;margin:14px 0 8px">${esc(sh.name)} <span style="font-size:13px;color:#5f7a80;font-weight:400">(${sh.rows.length} صف)</span></h3><div class="tablewrap" style="max-height:60vh;background:#fff"><table><thead><tr>${sh.header.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${sh.rows.map(r => `<tr>${r.map(v => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`).join("");
+}
+
 /* ---------- XLSX register ---------- */
 function colName(i){ let s = ""; i++; while (i){ const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
 function sheetXml(header, rows, widths){
@@ -696,15 +786,15 @@ function renderList(){
     <td class="id">${esc(t.phone)}</td>
     <td>${supOf(t).name ? esc(supOf(t).name) : `<span style="color:#b7c4c8">—</span>`}</td>
     <td><select data-id="${esc(t.id)}">${entOptions(assign[t.id] || "")}</select></td>
-    <td>${assign[t.id] ? `<div style="display:flex;gap:4px"><button class="mini" data-one="${esc(t.id)}">خطاب</button><button class="mini" data-rec="${esc(t.id)}">سجل</button></div>` : `<span class="pill wait">بدون جهة</span>`}</td></tr>`).join("");
+    <td>${assign[t.id] ? `<div style="display:flex;gap:4px"><button class="mini" data-one="${esc(t.id)}" title="معاينة الخطاب ثم تحميله">👁 خطاب</button><button class="mini" data-rec="${esc(t.id)}" title="معاينة السجل ثم تحميله">👁 سجل</button></div>` : `<span class="pill wait">بدون جهة</span>`}</td></tr>`).join("");
   $("tbody").querySelectorAll("select").forEach(s => s.addEventListener("change", () => {
     if (s.value) assign[s.dataset.id] = s.value; else delete assign[s.dataset.id]; save(); renderList();
   }));
   $("tbody").querySelectorAll("[data-sel]").forEach(c => c.addEventListener("change", () => {
     if (c.checked) selected.add(c.dataset.sel); else selected.delete(c.dataset.sel); updSel();
   }));
-  $("tbody").querySelectorAll("[data-one]").forEach(b => b.addEventListener("click", () => downloadLetters([b.dataset.one])));
-  $("tbody").querySelectorAll("[data-rec]").forEach(b => b.addEventListener("click", () => downloadRecords([b.dataset.rec])));
+  $("tbody").querySelectorAll("[data-one]").forEach(b => b.addEventListener("click", () => previewLetters([b.dataset.one])));
+  $("tbody").querySelectorAll("[data-rec]").forEach(b => b.addEventListener("click", () => previewRecords([b.dataset.rec])));
   $("chkAll").checked = list.length > 0 && list.every(t => selected.has(t.id));
   updSel();
 }
@@ -741,16 +831,16 @@ function letterNumbers(){
   if (changed) save();
   return nums;
 }
-async function downloadLetters(ids){
+async function downloadLetters(ids, el){
   const E = entByName(), nums = letterNumbers();
   const pick = trainees.filter(t => assign[t.id] && (!ids || ids.includes(t.id)));
   if (!pick.length){ msg($("outMsg"), "اختر جهة لمتدرب واحد على الأقل.", "err"); return; }
   const items = pick.map(t => ({t, ent: E[assign[t.id]] || {name: assign[t.id]}, no: nums[t.id]}));
   const bytes = await buildLettersDocx(items, S);
   const name = ids && ids.length === 1 ? `خطاب تدريب تعاوني - ${pick[0].name}.docx` : `خطابات التدريب التعاوني (${pick.length}).docx`;
-  await saveFile(name, bytes, $("outMsg"));
+  await saveFile(name, bytes, el || $("outMsg"));
 }
-async function downloadRecords(ids){
+async function downloadRecords(ids, el){
   const E = entByName();
   const pick = trainees.filter(t => assign[t.id] && (!ids || ids.includes(t.id)));
   if (!pick.length){ msg($("outMsg"), "اختر جهة لمتدرب واحد على الأقل.", "err"); return; }
@@ -758,11 +848,43 @@ async function downloadRecords(ids){
   msg($("outMsg"), "جارٍ تجهيز السجلات...", "info");
   const bytes = await buildRecordsDocx(items, S);
   const name = ids && ids.length === 1 ? `سجل التدريب التعاوني - ${pick[0].name}.docx` : `سجلات التدريب التعاوني (${pick.length} متدرب).docx`;
-  await saveFile(name, bytes, $("outMsg"));
+  await saveFile(name, bytes, el || $("outMsg"));
 }
-async function downloadRegister(){
+const PV_MAX = 15;
+function openPreview(title, html, note, onDl){
+  $("pvTitle").textContent = title; $("pvNote").textContent = note || "";
+  $("pvBody").innerHTML = html; $("pvMsg").className = "msg"; $("pvBody").scrollTop = 0;
+  $("pv").classList.remove("hidden"); document.body.style.overflow = "hidden";
+  $("pvDl").onclick = async () => { await onDl($("pvMsg")); };
+}
+function closePreview(){ $("pv").classList.add("hidden"); document.body.style.overflow = ""; $("pvBody").innerHTML = ""; }
+function pickItems(ids){
+  const E = entByName(), n = letterNumbers();
+  return trainees.filter(t => assign[t.id] && (!ids || ids.includes(t.id))).map(t => ({t, ent: E[assign[t.id]] || {name: assign[t.id]}, no: n[t.id], sup: supOf(t)}));
+}
+function previewLetters(ids){
+  const items = pickItems(ids);
+  if (!items.length){ msg($("outMsg"), "اختر جهة لمتدرب واحد على الأقل.", "err"); return; }
+  const shown = items.slice(0, PV_MAX);
+  const html = previewPages(shown.map((it, i) => letterBody(it.t, it.ent, S, it.no, i === 0)).join(""), headerXml(S), footerXml(S));
+  openPreview(items.length === 1 ? "معاينة خطاب: " + items[0].t.name : `معاينة الخطابات (${items.length})`, html,
+    items.length > PV_MAX ? `تُعرض أول ${PV_MAX} خطابات — الملف المحمّل يحتوي الكل` : "", el => downloadLetters(ids, el));
+}
+function previewRecords(ids){
+  const items = pickItems(ids);
+  if (!items.length){ msg($("outMsg"), "اختر جهة لمتدرب واحد على الأقل.", "err"); return; }
+  const shown = items.slice(0, Math.min(PV_MAX, 5));
+  const html = previewPages(shown.map((it, i) => recordPages(it.t, it.ent, it.sup, S, i === 0)).join(""), headerXml(S), footerXml(S));
+  openPreview(items.length === 1 ? "معاينة سجل: " + items[0].t.name : `معاينة السجلات (${items.length} متدرب)`, html,
+    items.length > shown.length ? `تُعرض أول ${shown.length} سجلات — الملف المحمّل يحتوي الكل` : "", el => downloadRecords(ids, el));
+}
+function previewRegister(){
+  if (!trainees.length) return;
+  openPreview("معاينة سجل التدريب (Excel)", `<div class="pvsheets">${previewSheets(registerSheets(trainees, assign, entByName(), letterNumbers(), S, supers))}</div>`, "", el => downloadRegister(el));
+}
+async function downloadRegister(el){
   const bytes = await buildRegisterXlsx(registerSheets(trainees, assign, entByName(), letterNumbers(), S, supers));
-  await saveFile("سجل التدريب التعاوني.xlsx", bytes, $("outMsg"));
+  await saveFile("سجل التدريب التعاوني.xlsx", bytes, el || $("outMsg"));
 }
 
 async function loadTraineeFile(f){
@@ -871,7 +993,12 @@ $("rstYes").addEventListener("click", () => {
   rstMode = null; window.scrollTo({top: 0, behavior: "smooth"});
 });
 $("dlLetters").addEventListener("click", () => downloadLetters(null));
-$("dlRegister").addEventListener("click", downloadRegister);
+$("dlRegister").addEventListener("click", () => downloadRegister());
+$("pvLetters").addEventListener("click", () => previewLetters(null));
+$("pvRecords").addEventListener("click", () => previewRecords(null));
+$("pvRegister").addEventListener("click", previewRegister);
+$("pvClose").addEventListener("click", closePreview);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("pv").classList.contains("hidden")) closePreview(); });
 $("dlRecords").addEventListener("click", () => downloadRecords(null));
 renderSettings(); renderEntities(); renderBulk(); renderDepts(); renderSupers(); renderList();
 if (trainees.length) msg($("upMsg"), `آخر تقرير محفوظ في هذا المتصفح — عدد المتدربين: ${trainees.length}. ارفع تقريراً جديداً للتحديث.`, "info");
