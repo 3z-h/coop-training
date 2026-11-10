@@ -143,7 +143,12 @@ details .in{padding:0 16px 16px}
         <button class="btn2" id="entUpBtn">رفع ملف الجهات (Word / Excel / CSV)</button>
         <input type="file" id="entFile" accept=".docx,.xlsx,.csv" class="hidden">
         <button class="btn2" id="entAdd">+ إضافة جهة</button>
+        <button class="btn2" id="entDelAll" style="background:#fde8e7;color:#b42318">🗑 حذف كل الجهات</button>
         <span style="font-size:12px;color:var(--muted)">«المخاطَب» هو ما يُكتب بعد «سعادة» في الخطاب، مثل: مدير بلدية محافظة طريف</span>
+      </div>
+      <div id="entDelConfirm" class="hidden" style="margin-bottom:10px;padding:10px 12px;border-radius:10px;background:#fde8e7;color:#b42318">
+        <b>ستُحذف كل الجهات، والمتدربون المرتبطون بها يرجعون «بدون جهة». متأكد؟</b>
+        <div class="row" style="margin-top:8px"><button class="btn" id="entDelYes" style="background:#b42318">نعم، احذف الكل</button><button class="btn2" id="entDelNo">إلغاء</button></div>
       </div>
       <div class="msg" id="entMsg"></div>
       <div class="tablewrap" style="max-height:50vh">
@@ -646,7 +651,7 @@ function entOptions(sel){
 }
 function renderEntities(){
   $("entCount").textContent = entities.length;
-  $("entBody").innerHTML = entities.map((e, i) => `<tr>${["name", "addr", "person", "job", "contact"].map(k => `<td><input data-i="${i}" data-k="${k}" value="${esc(e[k] || "")}" placeholder="${k === "addr" ? "مدير " + esc(e.name) : ""}"></td>`).join("")}<td><button class="mini" data-del="${i}">حذف</button></td></tr>`).join("");
+  $("entBody").innerHTML = entities.map((e, i) => `<tr>${["name", "addr", "person", "job", "contact"].map(k => `<td><input data-i="${i}" data-k="${k}" value="${esc(e[k] || "")}" placeholder="${k === "addr" ? "المسؤول عن التدريب في " + esc(e.name) : ""}"></td>`).join("")}<td><button class="mini" data-del="${i}" title="حذف الجهة" style="color:#b42318">🗑</button></td></tr>`).join("");
   $("entBody").querySelectorAll("input").forEach(inp => inp.addEventListener("change", () => {
     const e = entities[+inp.dataset.i], k = inp.dataset.k;
     if (k === "name"){ const old = e.name; for (const id in assign) if (assign[id] === old) assign[id] = inp.value.trim(); }
@@ -805,6 +810,12 @@ $("file").addEventListener("change", e => { if (e.target.files[0]) loadTraineeFi
 $("drop").addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) loadTraineeFile(f); });
 $("entUpBtn").addEventListener("click", () => $("entFile").click());
 $("entFile").addEventListener("change", e => { if (e.target.files[0]) loadEntityFile(e.target.files[0]); e.target.value = ""; });
+$("entDelAll").addEventListener("click", () => $("entDelConfirm").classList.remove("hidden"));
+$("entDelNo").addEventListener("click", () => $("entDelConfirm").classList.add("hidden"));
+$("entDelYes").addEventListener("click", () => {
+  entities = []; assign = {}; save(); renderEntities(); renderBulk(); renderList();
+  $("entDelConfirm").classList.add("hidden"); msg($("entMsg"), "تم حذف كل الجهات. ارفع ملف الجهات أو أضف جهة.", "ok");
+});
 $("entAdd").addEventListener("click", () => { entities.unshift({name: "جهة جديدة " + (entities.length + 1), addr: "", person: "", job: "", contact: ""}); save(); renderEntities(); renderBulk(); renderList(); });
 ["q", "fDept", "fState"].forEach(id => $(id).addEventListener("input", renderList));
 $("chkAll").addEventListener("change", e => { filtered().forEach(t => e.target.checked ? selected.add(t.id) : selected.delete(t.id)); renderList(); });
