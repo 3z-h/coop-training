@@ -136,7 +136,7 @@ details .in{padding:0 16px 16px}
       <div style="display:flex;gap:4px"><button class="btn big" id="dlLetters">📄 تحميل الخطابات (Word)</button><button class="btn2" id="pvLetters" title="معاينة">👁 معاينة</button></div>
       <div style="display:flex;gap:4px"><button class="btn big" id="dlRecords">📁 تحميل سجلات المتدربين للطباعة (Word)</button><button class="btn2" id="pvRecords" title="معاينة">👁 معاينة</button></div>
       <div style="display:flex;gap:4px"><button class="btn big" id="dlRegister">📊 تحميل سجل التدريب (Excel)</button><button class="btn2" id="pvRegister" title="معاينة">👁 معاينة</button></div>
-      <span style="font-size:13px;color:var(--muted)">لمن اختيرت له جهة فقط. سجل كل متدرب هو «سجل التدريب التعاوني» الرسمي كاملاً (27 صفحة) معبأً ببيانات المتدرب والجهة والمشرف.</span>
+      <span style="font-size:13px;color:var(--muted)">لمن اختيرت له جهة فقط. سجل كل متدرب هو «سجل التدريب التعاوني» الرسمي معبأً ببيانات المتدرب والجهة والمشرف.</span>
     </div>
     <div class="msg" id="outMsg"></div>
   </div>
@@ -772,19 +772,6 @@ function recordPages(t, ent, sup, S0, first){
   out.push(bgrid(["تحدث\nSpeaking", "قراءة\nReading", "كتابة\nWriting"], [["○ جيد جداً very good\n○ جيد good\n○ ضعيف Poor", "○ جيد جداً very good\n○ جيد good\n○ ضعيف Poor", "○ جيد جداً very good\n○ جيد good\n○ ضعيف Poor"]], [3166, 3167, 3167], {h: 900}));
   out.push(bgrid(["الخبرة العملية\nWork Experience"], [[""], [""], [""], [""], [""]], [9500], {h: 440}));
   out.push(bgrid(["معلومات إضافية\nAdditional Information"], [[""], [""], [""]], [9500], {h: 440}));
-  // 17. provider questionnaire
-  out.push(ptitle("استبانة استطلاع رأي جهة التدريب عن التدريب التعاوني", "Training Provider Questionnaire of the Cooperative Training", false));
-  out.push(para("أخي مشرف جهة التدريب: أهلاً بك ونود معرفة وجهة نظركم عن التدريب التعاوني، نأمل تعاونكم معنا في إعطاء المعلومات الدقيقة حتى نتمكن من تحسين وتطوير الأداء في المستقبل مقدرين لكم جهودكم المبذولة. الدرجة خمسة (٥) تعني أعلى تقدير والدرجة واحد (١) تعني أقل تقدير.", {jc: "both", sz: 18, line: 280, after: 40}));
-  out.push(para("Dear supervisor of training provider, we would like to let us know your opinions regarding the cooperative training. Please rate the following on a scale of (1) poor to (5) excellent. Thank you for your response.", {ltr: true, jc: "both", sz: 17, line: 260, after: 100}));
-  out.push(questionnaire(EN_Q));
-  // 18. trainee questionnaire
-  out.push(ptitle("استبانة استطلاع رأي المتدرب عن التدريب التعاوني", "Trainee Questionnaire of the Cooperative Training", false));
-  out.push(para("أخي المتدرب: أهلاً بك عزيزي المتدرب، مع شكرنا الجزيل لتعاونكم، ونود معرفة وجهة نظركم عن التدريب التعاوني، نأمل تعاونك معنا في إعطاء المعلومات الدقيقة حتى نتمكن من تحسين وتطوير الأداء في المستقبل مقدرين لكم جهودكم المبذولة. الدرجة خمسة (٥) تعني أعلى تقدير والدرجة واحد (١) تعني أقل تقدير.", {jc: "both", sz: 18, line: 280, after: 40}));
-  out.push(para("Dear trainee, we would like kindly to let us know about your opinion in terms of the cooperative training & we hope you supply us the accurate information in order to improve and develop the performance in the future. Please rate the following on a scale of (1) poor to (5) excellent.", {ltr: true, jc: "both", sz: 17, line: 260, after: 100}));
-  out.push(questionnaire(TR_Q));
-  out.push(para("ملاحظات / Notes:", {b: true, before: 120, after: 40}));
-  for (let i = 0; i < 4; i++) out.push(para("....................................................................................................................................", {after: 40}));
-  out.push(para("مع تمنياتنا للجميع بالتوفيق — Best regards", {b: true, jc: "center", before: 120}));
   return out.join("");
 }
 async function buildRecordsDocx(items, S){
