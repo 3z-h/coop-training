@@ -765,13 +765,6 @@ function recordPages(t, ent, sup, S0, first){
   // 15. CV
   out.push(ptitle("سيرة ذاتية", "CV", false));
   out.push(bgrid(["البيان\nItem", "البيانات\nDetails"], [["الاسم\nName", t.name], ["رقم الجوال\nMobile", t.phone], ["هاتف المنزل\nHome", ""], ["هاتف آخر\nOther Phone No.", ""], ["بريد إلكتروني\nE-mail", ""], ["رقم بطاقة الأحوال\nID. No.", t.nid || ""], ["مكان الميلاد\nPlace of Birth", ""], ["تاريخ الميلاد\nDate of Birth", ""], ["المؤهل العلمي\nEducation", ""], ["التخصص\nMajor", t.spec], ["المعدل التراكمي\nGPA", t.gpa || ""], ["تاريخ التخرج\nDate of Graduation", t.grad || S0.gradTerm || ""]], [3000, 6500], {h: 560, shade: [0]}));
-  // 16. courses
-  out.push(ptitle("الدورات التدريبية", "Training Courses", false));
-  out.push(bgrid(["اسم الدورة\nCourse Name", "مدتها\nPeriod", "جهة التدريب\nTraining Provider"], [["", "", ""], ["", "", ""], ["", "", ""], ["", "", ""]], [4000, 1500, 4000], {h: 480}));
-  out.push(para("اللغة الإنجليزية — English", {b: true, jc: "center", sz: 20, after: 60}));
-  out.push(bgrid(["تحدث\nSpeaking", "قراءة\nReading", "كتابة\nWriting"], [["○ جيد جداً very good\n○ جيد good\n○ ضعيف Poor", "○ جيد جداً very good\n○ جيد good\n○ ضعيف Poor", "○ جيد جداً very good\n○ جيد good\n○ ضعيف Poor"]], [3166, 3167, 3167], {h: 900}));
-  out.push(bgrid(["الخبرة العملية\nWork Experience"], [[""], [""], [""], [""], [""]], [9500], {h: 440}));
-  out.push(bgrid(["معلومات إضافية\nAdditional Information"], [[""], [""], [""]], [9500], {h: 440}));
   return out.join("");
 }
 async function buildRecordsDocx(items, S){
