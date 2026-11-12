@@ -136,7 +136,7 @@ details .in{padding:0 16px 16px}
       <div style="display:flex;gap:4px"><button class="btn big" id="dlLetters">📄 تحميل الخطابات (Word)</button><button class="btn2" id="pvLetters" title="معاينة">👁 معاينة</button></div>
       <div style="display:flex;gap:4px"><button class="btn big" id="dlRecords">📁 تحميل سجلات المتدربين للطباعة (Word)</button><button class="btn2" id="pvRecords" title="معاينة">👁 معاينة</button></div>
       <div style="display:flex;gap:4px"><button class="btn big" id="dlRegister">📊 تحميل سجل التدريب (Excel)</button><button class="btn2" id="pvRegister" title="معاينة">👁 معاينة</button></div>
-      <span style="font-size:13px;color:var(--muted)">لمن اختيرت له جهة فقط. سجل كل متدرب 6 صفحات من نماذج الدليل الإجرائي: البيانات وكشف الحضور، خطة التدريب (6)، تقييم الجهة (7)، الزيارات (8)، التقرير الفني (11)، الخلاصة (13).</span>
+      <span style="font-size:13px;color:var(--muted)">لمن اختيرت له جهة فقط. سجل كل متدرب هو «سجل التدريب التعاوني» الرسمي كاملاً (27 صفحة) معبأً ببيانات المتدرب والجهة والمشرف.</span>
     </div>
     <div class="msg" id="outMsg"></div>
   </div>
@@ -384,10 +384,10 @@ function rPr(o = {}){
 function run(t, o){ return `<w:r>${rPr(o)}<w:t xml:space="preserve">${esc(t)}</w:t></w:r>`; }
 function para(content, o = {}){
   const runs = Array.isArray(content) ? content.map(x => typeof x === "string" ? run(x, o) : run(x.t, Object.assign({}, o, x))).join("") : run(content, o);
-  const jc = o.jc === "left" ? "center" : (o.jc || "right");
+  const jc = o.jc === "left" && !o.ltr ? "center" : (o.jc || "right");
   const sp = `<w:spacing w:before="${o.before || 0}" w:after="${o.after == null ? 60 : o.after}" w:line="${o.line || 264}" w:lineRule="auto"/>`;
   const bdr = o.bottomBorder ? `<w:pBdr><w:bottom w:val="${o.bottomBorder}" w:sz="6" w:space="1" w:color="5F7A80"/></w:pBdr>` : "";
-  return `<w:p><w:pPr>${o.pageBreakBefore ? "<w:pageBreakBefore/>" : ""}${o.ltr ? "" : "<w:bidi/>"}${bdr}${sp}${jc === "right" ? "" : `<w:jc w:val="${jc}"/>`}${o.ltr ? "" : `<w:rPr><w:rtl/></w:rPr>`}</w:pPr>${runs}</w:p>`;
+  return `<w:p><w:pPr>${o.pageBreakBefore ? "<w:pageBreakBefore/>" : ""}${o.ltr ? '<w:bidi w:val="0"/>' : "<w:bidi/>"}${bdr}${sp}${jc === "right" ? "" : `<w:jc w:val="${jc}"/>`}${o.ltr ? "" : `<w:rPr><w:rtl/></w:rPr>`}</w:pPr>${runs}</w:p>`;
 }
 function cell(inner, w, o = {}){
   const shd = o.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>` : "";
@@ -397,7 +397,7 @@ function cell(inner, w, o = {}){
 function table(rows, widths, o = {}){
   const b = o.borders === false ? "nil" : "single";
   const borders = `<w:tblBorders>${["top","left","bottom","right","insideH","insideV"].map(k => `<w:${k} w:val="${b}" w:sz="4" w:space="0" w:color="8FA6AB"/>`).join("")}</w:tblBorders>`;
-  return `<w:tbl><w:tblPr><w:bidiVisual/><w:tblW w:w="${widths.reduce((a, c) => a + c, 0)}" w:type="dxa"/><w:jc w:val="center"/>${borders}<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(x => `<w:gridCol w:w="${x}"/>`).join("")}</w:tblGrid>${rows.map(r => `<w:tr><w:trPr><w:trHeight w:val="${o.h || 360}"/></w:trPr>${r}</w:tr>`).join("")}</w:tbl>`;
+  return `<w:tbl><w:tblPr><w:bidiVisual/><w:tblW w:w="${widths.reduce((a, c) => a + c, 0)}" w:type="dxa"/><w:jc w:val="center"/>${borders}<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${widths.map(x => `<w:gridCol w:w="${x}"/>`).join("")}</w:tblGrid>${rows.map((r, i) => `<w:tr><w:trPr>${o.repeat && i === 0 ? "<w:tblHeader/><w:cantSplit/>" : "<w:cantSplit/>"}<w:trHeight w:val="${o.h || 360}"/></w:trPr>${r}</w:tr>`).join("")}</w:tbl>`;
 }
 function filled(S0){
   const S = Object.assign({}, S0), d = "....................";
@@ -475,8 +475,8 @@ function footerXml(S){
   if ((S.email || "").trim()){ fparts.push({t: (fparts.length ? "   —   " : "") + "البريد: "}); fparts.push({t: S.email, ltr: true}); }
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${fparts.length ? para("", {bottomBorder: "single", after: 40, line: 120}) + para(fparts, {jc: "center", sz: 17, color: "0F4C5C", b: true, after: 0}) : para("", {after: 0})}</w:ftr>`;
 }
-function docXml(body){
-  const sect = `<w:sectPr><w:headerReference w:type="default" r:id="rId2"/><w:footerReference w:type="default" r:id="rId4"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="2350" w:right="1000" w:bottom="900" w:left="1000" w:header="350" w:footer="250" w:gutter="0"/><w:bidi/></w:sectPr>`;
+function docXml(body, top){
+  const sect = `<w:sectPr><w:headerReference w:type="default" r:id="rId2"/><w:footerReference w:type="default" r:id="rId4"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="${top || 2350}" w:right="1000" w:bottom="900" w:left="1000" w:header="350" w:footer="250" w:gutter="0"/><w:bidi/></w:sectPr>`;
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${body}<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>${sect}</w:body></w:document>`;
 }
 async function buildLettersDocx(items, S){
@@ -512,93 +512,287 @@ function signRow(labels){
   const w = Math.floor(9500 / labels.length);
   return table([labels.map(l => cell(para(l, {b: true, jc: "center", after: 0}) + para("الاسم: ..............................", {jc: "center", after: 0, sz: 19}) + para("التوقيع: ............................", {jc: "center", after: 0, sz: 19}), w)).join("")], labels.map(() => w), {borders: false, h: 900});
 }
+function ml(text, o){ return String(text == null ? "" : text).split("\n").map(s => para(s, o)).join(""); }
+function semInfo(S){
+  const s = String(S.semester || "");
+  const y = (s.match(/(1[45]\d\d)/) || [])[1] || "";
+  const k = /الصيفي|الثالث/.test(s) ? "summer" : /الثاني/.test(s) ? "second" : /الأول|الاول/.test(s) ? "first" : "";
+  return {year: y, k};
+}
+function recordHeaderXml(){
+  const cx = 560000, cy = Math.round(560000 * 217 / 193);
+  const img = `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="1" name="logo"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="1" name="logo.jpeg"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+  const txt = para("المؤسسة العامة للتدريب التقني والمهني", {b: true, jc: "center", after: 0, sz: 20, line: 240}) + para("Technical and Vocational Training Corporation", {b: true, jc: "center", after: 0, sz: 17, ltr: true, line: 240});
+  const tbl = table([cell(img, 1400) + cell(txt, 5000)], [1400, 5000], {borders: false});
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">${tbl}</w:hdr>`;
+}
+const EMPTY_FTR = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p/></w:ftr>`;
+function bgrid(head, rows, widths, o = {}){
+  // bilingual grid: cells may contain "\n"; o.lc = index of right-aligned column; o.repeat repeats header
+  const H = "0F4C5C";
+  const hc = (x, w) => cell(ml(x, {b: true, jc: "center", after: 0, sz: o.hsz || 17, color: "FFFFFF", line: 230}), w, {fill: H});
+  const bc = (x, w, i) => cell(ml(x == null ? "" : x, {jc: i === o.lc ? "right" : "center", after: 0, sz: o.sz || 18, line: 230, b: !!o.bold && i === o.lc}), w, (o.shade || []).includes(i) ? {fill: "EEF2F3"} : {});
+  return table([head.map((h, i) => hc(h, widths[i])).join("")].concat(rows.map(r => r.map((x, i) => bc(x, widths[i], i)).join(""))), widths, {h: o.h || 420, repeat: o.repeat}) + para("", {after: 0, line: 160});
+}
+function fieldRows(rows, h){
+  // rows: [arLabel, value, enLabel]
+  const W = [2600, 4600, 2300];
+  return table(rows.map(([a, v, e]) => cell(para(a, {b: true, after: 0, sz: 20}), W[0]) + cell(para(v || "", {jc: "center", after: 0, sz: 20}), W[1]) + cell(para(e, {b: true, jc: "left", after: 0, sz: 19, ltr: true}), W[2])), W, {h: h || 470}) + para("", {after: 0, line: 160});
+}
+function nameLine(t){
+  return table([cell(para("اسم المتدرب: " + t.name, {b: true, after: 0, sz: 19}), 4300) + cell(para("الرقم التدريبي: " + t.id, {b: true, after: 0, sz: 19}), 2800) + cell(para("Name / No.", {b: true, jc: "left", after: 0, sz: 17, ltr: true}), 2400)], [4300, 2800, 2400], {borders: false, h: 340}) + para("", {after: 40, line: 160});
+}
+function ptitle(ar, en, first, sub){
+  return para(ar, {b: true, jc: "center", sz: 28, color: "0F4C5C", after: 0, pageBreakBefore: !first}) + para(en, {b: true, jc: "center", sz: 22, ltr: true, after: sub ? 0 : 160}) + (sub ? para(sub, {jc: "center", sz: 17, color: "5F7A80", after: 140}) : "");
+}
+function sigTable(pairs){
+  const w = Math.floor(9500 / (pairs.length * 2));
+  return table([pairs.map(p => cell(ml(p, {b: true, jc: "center", after: 0, sz: 17}), w, {fill: "EEF2F3"}) + cell(para("", {after: 0}), w)).join(""), pairs.map(() => cell(ml("التوقيع\nSignature", {b: true, jc: "center", after: 0, sz: 17}), w, {fill: "EEF2F3"}) + cell(para("", {after: 0}), w)).join("")], pairs.map(() => [w, w]).flat(), {h: 600});
+}
+const TR_Q = [
+ ["سمعت كثيراً عن برنامج التدريب التعاوني قبل بدايته.", "I heard of the cooperative training program before starting."],
+ ["دورة التهيئة لبرنامج التدريب التعاوني كانت واضحة الأهداف.", "Configuration course for cooperative training program was clear goals."],
+ ["تم تعريفنا ببرامج تطويرية للتدريب التعاوني تساهم في توظيفنا قبل بداية التدريب التعاوني.", "We were introduced about development programs of the cooperative that contributes to the employment before starting the cooperative program."],
+ ["دورة تهيئة المتدرب للتدريب التعاوني كانت مميزة وتجيب على ما يدور لدينا من أسئلة.", "Preparation course of the cooperative training program was distinctive & answered our questions."],
+ ["أعتقد أن الفرصة التي يحصل عليها المتدرب بنفسه تساعده كثيراً على الإنتاجية والتوظف.", "I believe that the opportunity, which the trainee gets, helps him so much in terms of the productivity & employment."],
+ ["كنت متشوقاً لبرنامج التدريب التعاوني لأنه ينقلنا لمرحلة التطبيق الميداني.", "I was so excited of the cooperative training because it moves us to the field application."],
+ ["ربطت بين التدريب التعاوني وبين حصولي على الوظيفة.", "I linked between the cooperative & obtaining a job."],
+ ["برنامج التدريب التعاوني مفيد ومشوق.", "The cooperative training program was useful & interesting."],
+ ["برنامج التدريب التعاوني شجعني على حب التفوق.", "The cooperative training program encouraged me to the excellence."],
+ ["ما وزع علينا حول برنامج التدريب التعاوني من أدلة وكتيبات تعريف كان كافياً.", "The materials, which were distributed, were useful enough."],
+ ["خطة التدريب التعاوني كانت واضحة جداً فلدينا معرفة بما يجب عمله في المنشأة التدريبية كل أسبوع.", "The cooperative training plan was obvious, so we have an idea what we can do at the facility."],
+ ["هناك توافق كبير بين مجال التخصص الذي تخرجت منه وطبيعة فرصة التدريب التعاوني التي حصلت عليها.", "There is a correspond between the major & nature of the cooperative program opportunity."],
+ ["استقبال منشأة التدريب التعاوني كان مميزاً.", "Reception of the cooperative training provider was distinctive."],
+ ["توقعت أن أحصل على مكافأة مجزية نهاية التدريب التعاوني من المنشأة.", "I expected that I get a reward at the end of the cooperative training from the provider."],
+ ["حاولت أن أبحث عن فرصة لي في التدريب التعاوني.", "I tried to seek a job during the cooperative program."],
+ ["زيارات المشرف الميداني كانت كافية للوقوف على مسيرتي في برنامج التدريب التعاوني.", "The visits of the field supervisor were enough in terms of follow-up of the cooperative training."],
+ ["من الضروري التواصل عن طريق الجوال بين المشرف من الكلية / المعهد والمتدرب.", "It is necessary that there is a communication via mobile between the college/institute supervisor and the trainee."],
+ ["من المهم أن يعرف المتدرب عن وقت زيارة المشرف من الكلية / المعهد له.", "It is important that the trainee has an idea about the time of the supervisor visit from college/institute."],
+ ["اهتمام مشرف جهة التدريب (المنشأة) بي وإعطائي الحافز للتدريب كان مميزاً.", "The supervisor of training provider cares motivates me so much."],
+ ["بعد جهة التدريب عن منزلي عائق لعملية انتظامي في التدريب التعاوني.", "Distance of the training provider from the trainee's home can be impacted on the trainee's discipline for the cooperative training."],
+ ["لاحظت أن الأعمال التي تسند لي متكررة وروتينية وتخالف خطة التدريب.", "The tasks that I received were frequent & did not match the training plan."],
+ ["فترة التدريب كانت كافية لتطبيق المهارات التي حصلنا عليها في الكلية / المعهد.", "The training period was enough to apply the skills that the trainee obtained from the college/institute."],
+ ["من وجهة نظري أن الحضور والانصراف هما أهم عنصرين في عملية تقييم المتدرب.", "In my opinion, attendance is the most important thing in terms of process of the trainee evaluation."],
+ ["درجات التقييم في مصلحة المتدرب وتعطيه حقه.", "Evaluation grades were fair."],
+ ["التقارير الدورية ساعدتني كثيراً في إتمام التقرير الفني.", "Cyclic reports helped me to fulfill the technical report."],
+ ["أتمنى أن يتابع مشرف التدريب التعاوني من الكلية / المعهد عملية توظيفي لدى المنشأة لأن هذا هو الهدف الذي أسعى لتحقيقه.", "I wish that the cooperative training program supervisor from college/institute follows up my employment process at the training provider because this is the objective that I seek to achieve."],
+ ["تقييم مشرف المنشأة لي كان عادلاً وأعطاني حقي.", "The assessment of the facility supervisor was fair."],
+ ["أرى أن إثبات الوجود بداية فترة التوظيف أهم من الراتب الذي قد يكون منخفضاً في البداية.", "I think that self-proving at the beginning of employment period is more important than low salary."],
+ ["نميت مهارات إضافية بعد برنامج التدريب التعاوني غير التي تدربت عليها في الكلية / المعهد.", "I enhanced my skills after the cooperative training program."],
+ ["اطلعت على جميع نماذج التقييم التي تخصني أثناء برنامج التدريب التعاوني.", "I viewed all evaluation forms that are related to me during the cooperative training program."],
+ ["تقييم مشرف التدريب التعاوني في الكلية / المعهد كان عادلاً وأعطاني ما أستحق.", "The assessment of cooperative training supervisor at the college/institute was fair."]
+];
+const EN_Q = [
+ ["سمعنا عن برنامج التدريب التعاوني قبل بدايته.", "We heard of the cooperative training program before it begun."],
+ ["حملة التعريف ببرنامج التدريب التعاوني كانت مميزة وواضحة الهدف.", "Campaign of defining the cooperative training program was perfect & clear."],
+ ["يمكن أن يكون برنامج التدريب التعاوني فرصة مواتية للمتدرب للانخراط في سوق العمل.", "The cooperative training can be a favorable opportunity for the trainee to join the labor market."],
+ ["الفرصة التدريبية التي يحصل عليها المتدرب بنفسه تساعده كثيراً على التعرف على سوق العمل.", "The training opportunity, which the trainee got by himself, helps him to recognize the labor market."],
+ ["من المهم أن تعرف جهة التدريب عن وقت زيارة المشرف من الكلية / المعهد له.", "It's important that the training provider knows when the supervisor will visit from the college or institute."],
+ ["برنامج التدريب التعاوني مفيد ومشوق.", "The cooperative training was useful and interesting."],
+ ["أدلة برنامج التدريب التعاوني الموزعة علينا كانت كافية للتعريف به.", "The cooperative training program guides that were distributed were good enough to introduce it."],
+ ["خطة التدريب التعاوني كانت واضحة جداً فلدينا معرفة بما يجب عمله في المنشأة التدريبية كل أسبوع، بما يحقق مصلحة المتدرب والعمل.", "Cooperative training plan was so clear & we got an idea about our tasks at the training provider."],
+ ["هناك توافق كبير بين ما تدرب عليه المتدرب وبين تخصصه.", "There was a correspond between what the trainee trained & his major."],
+ ["توقيت التدريب التعاوني مناسب لطبيعة عمل المنشأة.", "The time of the cooperative training was appropriate in terms of the nature of work."],
+ ["زيارات المشرف الميداني كانت كافية للوقوف على سير برنامج التدريب التعاوني.", "The visits of the field supervisor were useful to check the track of the cooperative training program."],
+ ["من الضروري التواصل عن طريق الجوال / الهاتف بين المشرف من الكلية / المعهد وجهة التدريب.", "It's necessary to communicate via mobile/phone between the college/institute supervisor and the training provider."],
+ ["يمكن الربط بين برنامج التدريب التعاوني والحصول على فرصة عمل.", "It can be linked between the cooperative training and getting a job."],
+ ["من المهم وجود مشرف جهة التدريب أثناء الزيارة الإشرافية من قبل المشرف الميداني من الكلية أو المعهد.", "It's important that there is a training provider's supervisor during the supervision visit by the field supervisor of the college/institute."],
+ ["بعد جهة التدريب عن منزل المتدرب مؤثر على انضباط المتدرب في التدريب التعاوني.", "Distance of the training provider from the trainee's home can be impacted on the trainee's discipline for the cooperative training."],
+ ["الأعمال المتكررة والروتينية تضعف من محصلة التدريب وتقلل فائدته للمتدرب.", "Routine work weakens training outcome & reduces its benefits for the trainee."],
+ ["فترة التدريب كانت كافية لتطبيق المهارات التي حصل عليها المتدرب في الكلية / المعهد.", "The training period was enough to apply skills that the trainee acquired at the college/institute."],
+ ["الحضور والانصراف هما عنصرين مهمين في عملية تقييم المتدرب.", "Attendance is very important in the evaluation process of the trainee."],
+ ["درجات التقييم في مصلحة المتدرب وتعطيه حقه.", "Evaluation grades clarify the right of the trainee."],
+ ["التقارير الدورية تساعد كثيراً في إتمام التقرير الفني.", "Periodical reports help significantly to accomplish the technical report."],
+ ["يستطيع المتدرب تنمية مهارات إضافية بعد برنامج التدريب التعاوني غير التي تدرب عليها في الكلية / المعهد.", "The trainee can enhance additional skills after the cooperative training program beside what he gained in the college/institute."],
+ ["اطلعنا على جميع نماذج التقييم ذات العلاقة ببرنامج التدريب التعاوني.", "We have viewed all relevant evaluation forms in the cooperative training."]
+];
+function questionnaire(items){
+  const head = ["م\nNo.", "البنود\nItems", "1", "2", "3", "4", "5"];
+  const rows = items.map((q, i) => [String(i + 1), q[0] + "\n" + q[1], "○", "○", "○", "○", "○"]);
+  return bgrid(head, rows, [600, 6400, 500, 500, 500, 500, 500], {lc: 1, h: 600, repeat: true, sz: 17});
+}
 function recordPages(t, ent, sup, S0, first){
   const S = filled(S0);
-  const weeks = Math.max(1, Math.min(20, parseInt(S.weeks, 10) || 9));
+  const college = t.unit ? unitToCollege(t.unit) : S.college;
+  const si = semInfo(S0);
+  const box = on => on ? "☒" : "☐";
   const out = [];
-  // 1) cover + attendance
-  out.push(pageTitle("سجل التدريب التعاوني للمتدرب", S.semester, first));
-  out.push(infoGrid(t, ent, sup, S));
-  out.push(para("", {after: 60}));
+  const entPhone = /^0?5\d{8}$|^0\d{8,9}$/.test(String(ent.contact || "").replace(/\s/g, "")) ? ent.contact : "";
+  // 1. cover
+  out.push(para("", {after: 0, pageBreakBefore: !first}));
+  for (const [x, o] of [["المملكة العربية السعودية", {}], ["Kingdom of Saudi Arabia", {ltr: true}], ["المؤسسة العامة للتدريب التقني والمهني", {}], ["Technical and Vocational Training Corporation", {ltr: true}], ["الإدارة العامة لشؤون المتدربين", {}], ["General Directorate of Trainees affairs", {ltr: true}], [college, {b: true, sz: 26}], ["College of Technology", {ltr: true}]])
+    out.push(para(x, Object.assign({jc: "center", after: 60, sz: 22}, o)));
+  out.push(para("سجل التدريب التعاوني", {b: true, jc: "center", sz: 56, color: "0F4C5C", before: 200, after: 60}));
+  out.push(para("Cooperative Training Record", {b: true, jc: "center", sz: 32, ltr: true, after: 60}));
+  out.push(para("(لجميع الكليات)  (For all Colleges & Institutes)", {b: true, jc: "center", sz: 20, after: 240}));
   out.push(table([
-    cell(para("مسؤول جهة التدريب: " + (ent.person || "........................"), {after: 0, sz: 20}), 4750) + cell(para("وسيلة التواصل: " + (ent.contact || "........................"), {after: 0, sz: 20}), 4750),
-    cell(para("جوال المتدرب: " + (t.phone || ""), {after: 0, sz: 20}), 4750) + cell(para("جوال المشرف الميداني: " + (sup.phone || "........................"), {after: 0, sz: 20}), 4750),
-    cell(para("بداية التدريب: " + S.hStart + " — " + S.gStart, {after: 0, sz: 20}), 4750) + cell(para("مدة التدريب: " + S.weeks + " أسابيع", {after: 0, sz: 20}), 4750),
-    cell(para("مشرف التدريب التعاوني: " + S.coop, {after: 0, sz: 20, b: true}), 4750) + cell(para("جواله: " + S.coopPhone, {after: 0, sz: 20, b: true}), 4750)
-  ], [4750, 4750], {h: 340}));
-  out.push(para("كشف الحضور والانصراف", {b: true, jc: "center", sz: 26, color: "0F4C5C", before: 200, after: 40}));
-  out.push(para("يُعبأ من مشرف جهة التدريب: (ح) حاضر — (غ) غائب — (ت) متأخر — (س) مستأذن", {jc: "center", sz: 18, color: "5F7A80", after: 80}));
-  const aw = [850, 1050, 1050, 850, 850, 850, 850, 850, 900, 1400];
-  const rows = [];
-  for (let i = 1; i <= weeks; i++) rows.push([i, "", "", "", "", "", "", "", "", ""]);
-  out.push(gridTable(["الأسبوع", "من", "إلى", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "أيام الغياب", "توقيع مشرف الجهة"], rows, aw, {leftCol: -1, h: weeks > 12 ? 360 : 440, hsz: 17}));
-  out.push(table([cell(para("مجموع أيام الغياب: ............", {b: true, after: 0}), 4750) + cell(para("درجة الحضور (من 20): ............", {b: true, after: 0}), 4750)], [4750, 4750], {borders: false, h: 420}));
-  out.push(signRow(["مشرف جهة التدريب", "المشرف الميداني من التخصص"]));
-  out.push(para("كشف الحضور يُعد من قبل جهة التدريب حسب طبيعة العمل (الدليل الإجرائي، مهمة المشرف الميداني رقم 3).", {sz: 17, color: "5F7A80", jc: "center"}));
-  // 1b) form 6
-  out.push(pageTitle("خطة التدريب التفصيلية للمتدربين", "نموذج رقم (6)", false));
+    cell(para(`العام التدريبي: ${si.year ? si.year + "هـ" : "........هـ"}      الفصل التدريبي:  الأول ${box(si.k === "first")}   الثاني ${box(si.k === "second")}   الصيفي ${box(si.k === "summer")}`, {b: true, after: 0, sz: 20}), 9000),
+    cell(para(`Training year: ${si.year || "......"} H      Semester:  First ${box(si.k === "first")}   Second ${box(si.k === "second")}   Summer ${box(si.k === "summer")}`, {b: true, jc: "left", ltr: true, after: 0, sz: 20}), 9000)
+  ], [9000], {h: 480}));
+  out.push(para("", {after: 200}));
   out.push(table([
-    cell(para("اسم المتدرب: " + t.name, {after: 0}), 4750) + cell(para("الرقم التدريبي: " + t.id, {after: 0}), 4750),
-    cell(para("جهة التدريب: " + ent.name, {after: 0}), 4750) + cell(para("رقم الاتصال: " + (t.phone || ""), {after: 0}), 4750)
-  ], [4750, 4750], {h: 380}));
-  out.push(para("", {after: 60}));
-  out.push(para("المهام والوظائف", {b: true, jc: "center", sz: 24, color: "0F4C5C", after: 60}));
-  const ORD = ["الأول", "الثاني", "الثالث", "الرابع", "الخامس", "السادس", "السابع", "الثامن", "التاسع", "العاشر", "الحادي عشر", "الثاني عشر", "الثالث عشر", "الرابع عشر", "الخامس عشر", "السادس عشر"];
-  const pw = Math.max(weeks, 10) > 16 ? 16 : Math.max(weeks, 10);
-  const prow = []; for (let i = 0; i < pw; i++) prow.push([i + 1, "", i + 1, "", ORD[i]]);
-  out.push(gridTable(["م", "أهم المهارات التي تدرب عليها في الوحدة التدريبية", "م", "المهارات المتوفرة في جهة التدريب *", "أسبوع التنفيذ"], prow, [500, 3900, 500, 3400, 1200], {leftCol: -1, h: 560, hsz: 18}));
-  out.push(signRow(["مشرف جهة التدريب", "المشرف الميداني من التخصص"]));
-  out.push(para("* لا يمنع من وجود مهارات في جهة التدريب تزيد عن المهارات التي تدرب عليها المتدرب في الوحدة التدريبية.", {sz: 17, color: "5F7A80"}));
-  // 2) form 7
-  out.push(pageTitle("تقييم المتدرب من جهة التدريب", "نموذج رقم (7) — يُعاد بعد تعبئته في ظرف مختوم (سري) إلى قسم التدريب التعاوني", false));
-  out.push(infoGrid(t, ent, sup, S));
+    cell(para("اسم المتدرب: " + t.name, {b: true, after: 0, sz: 22}), 9000),
+    cell(para("الرقم التدريبي: " + t.id + "      التخصص: " + t.spec, {b: true, after: 0, sz: 22}), 9000)
+  ], [9000], {borders: false, h: 420}));
+  out.push(para("• هذا السجل وثيقة هامة يجب المحافظة عليه وإعادته حال العثور عليه للوحدة التدريبية الصادر منها.", {before: 300, after: 20, sz: 18}));
+  out.push(para("• This record is an important document & must be maintained and return if it has been found to the training unit.", {ltr: true, jc: "left", after: 0, sz: 18}));
+  // 2. info
+  out.push(para("المتدرب   Trainee", {b: true, jc: "center", sz: 24, color: "0F4C5C", pageBreakBefore: true, after: 80}));
+  out.push(fieldRows([["الاسم:", t.name, "Name:"], ["الرقم التدريبي:", t.id, "No:"], ["القسم:", t.dept, "Department:"], ["التخصص:", t.spec, "Major:"], ["الجوال:", t.phone, "Mobile:"]]));
+  out.push(para("المشرف على التدريب التعاوني من الوحدة التدريبية — Supervisor of the cooperative training at the training unit", {b: true, jc: "center", sz: 19, color: "0F4C5C", before: 160, after: 60}));
+  out.push(fieldRows([["الاسم:", S0.coop || "", "Name:"], ["الجوال:", S0.coopPhone || "", "Mobile:"], ["البريد الإلكتروني:", S0.email || "", "E-mail:"], ["الهاتف:", "", "Phone:"]]));
+  out.push(para("منشأة التدريب — Training Provider", {b: true, jc: "center", sz: 19, color: "0F4C5C", before: 160, after: 60}));
+  out.push(fieldRows([["اسم الجهة:", ent.name, "Name of Training provider:"], ["عنوان الجهة:", "", "Address:"], ["هاتف:", entPhone, "Phone:"], ["فاكس:", "", "Fax:"]]));
   out.push(para("", {after: 80}));
-  const EI = [["الالتزام بالتواجد خلال أوقات الدوام", 10], ["المعرفة التخصصية المكتسبة", 7], ["القدرة على التطبيق", 5], ["رغبة المتدرب في التعلم واكتساب الخبرة", 3], ["مدى التزامه بأنظمة المنشأة", 4], ["مدى تعاونه مع زملائه", 2], ["مستوى إنتاجه", 5], ["السلامة المهنية والاهتمام بمكان التدريب", 4]];
-  out.push(gridTable(["م", "القدرات", "الدرجة", "الدرجة المستحقة"], EI.map((e, i) => [i + 1, e[0], e[1], ""]).concat([["", "المجموع", 40, ""]]), [700, 5300, 1500, 2000], {h: 470}));
+  out.push(fieldRows([["اسم المشرف:", ent.person || "", "Supervisor Name:"], ["الجوال:", ent.contact || "", "Mobile:"]]));
+  // 3. intro
+  out.push(ptitle("تقديم", "Introduction", false));
+  out.push(para("تسعى المؤسسة العامة للتدريب التقني والمهني إلى تحقيق الملاءمة بين ما يتم التدريب عليه من حقائب تدريبية واحتياجات سوق العمل، ومن هذا المنطلق كان التدريب التعاوني والذي يربط بيئة العمل بما اكتسبه المتدرب من مهارات في الوحدة التدريبية، وسعياً نحو إيجاد جهد تعاوني مع قطاع الأعمال، فإنه يسرنا أن تشاركونا أهدافنا المشتركة معكم في سد احتياج سوق العمل من القوى العاملة الماهرة والمدربة من خلال تمكين المتدرب من الحصول على الخبرات اللازمة في منشأتكم وتقديم كل عون ومساعدة له ليصبح عضواً فاعلاً في مجتمعه. شاكرين لكم كريم تعاونكم.", {jc: "both", line: 320, after: 120}));
+  out.push(para("المؤسسة العامة للتدريب التقني والمهني", {b: true, jc: "center", after: 400}));
+  out.push(para("Technical and Vocational Training Corporation (TVTC) seeks to achieve appropriateness between what it has been trained by training curriculum and labor market needs. The cooperative training links the work environment with what the trainees acquires such as skills at the unit training as well as seeking to find cooperative actions with the private sector. Based on that, we are pleased to share our joint objectives to satisfy labor market needs for skilled workforce by enabling the trainees to obtain experience at your institutions in order to be effective in the community.", {jc: "both", ltr: true, line: 300, after: 120}));
+  out.push(para("Thank you for your cooperation,", {b: true, ltr: true, jc: "left", after: 200}));
+  out.push(para("Technical and Vocational Training Corporation", {b: true, ltr: true, jc: "left"}));
+  // 4. orientation
+  out.push(ptitle("توجيه المتدرب", "THE TRAINEE'S ORIENTATION", false, "يعبأ من مشرف التدريب التعاوني بالقسم — It must be filled by the supervisor of the cooperative training of the department"));
+  out.push(fieldRows([["اسم المتدرب", t.name, "Trainee Name"], ["القسم", t.dept, "Department"], ["التخصص", t.spec, "Major"]], 560));
+  const addr = ent.addr && ent.addr.trim() ? ent.addr.trim() : "مدير " + ent.name;
+  out.push(table([cell(para("سعادة / " + addr, {b: true, after: 0, sz: 22}), 6800) + cell(para("حفظه الله", {b: true, jc: "center", after: 0, sz: 22}), 2700)], [6800, 2700], {borders: false, h: 360}));
+  out.push(para("السلام عليكم ورحمة الله وبركاته", {jc: "center", before: 60, after: 80}));
+  out.push(para(`نأمل التكرم بالسماح للمتدرب الموضحة بياناته أعلاه بالتدريب لديكم للفترة من ${S0.hStart || "   /   /   ١٤هـ"} إلى   /   /   ١٤هـ حسب التنسيق المسبق معكم، مقدرين حسن تعاونكم.`, {jc: "both", line: 320, after: 240}));
+  out.push(para("Dear Sir,", {ltr: true, jc: "left", after: 60}));
+  out.push(para("We hope to allow the trainee (shown above) to train according to our prior agreement from   /   /20     to   /   /20    . We appreciate your kind cooperation.", {ltr: true, jc: "both", line: 300, after: 300}));
+  out.push(table([cell(para("الختم / Stamp", {b: true, jc: "center", after: 0}), 4750) + cell(para("رئيس القسم / Department Head", {b: true, jc: "center", after: 0}) + para("الاسم / Name: ..............................", {jc: "center", after: 0}) + para("التوقيع / Signature: ......................", {jc: "center", after: 0}), 4750)], [4750, 4750], {borders: false, h: 1000}));
+  // 5. initiation
+  out.push(ptitle("مباشرة المتدرب", "TRAINEE INITIATION", false, "(يعبأ من جهة التدريب) (Filled out by the training Provider)"));
+  const L2 = (a, v) => cell(ml(a, {b: true, jc: "center", after: 0, sz: 18}), 1900, {fill: "EEF2F3"}) + cell(para(v || "", {jc: "center", after: 0, sz: 20}), 2850);
+  out.push(table([
+    L2("اسم المتدرب\nTrainee Name", t.name) + L2("رقم المتدرب\nTrainee No.", t.id),
+    L2("القسم\nDepartment", t.dept) + cell(para("", {after: 0}), 4750, {span: 2}),
+    L2("التخصص\nMajor", t.spec) + cell(para("", {after: 0}), 4750, {span: 2}),
+    L2("تاريخ مباشرة المتدرب\nStarting Date", "") + cell(para("", {after: 0}), 4750, {span: 2}),
+    L2("اسم المسؤول المباشر\nName of the direct Manager", "") + L2("الوظيفة\nJob", ""),
+    L2("رقم الهاتف\nTel. No", "") + L2("رقم الفاكس\nFax", ""),
+    L2("البريد الإلكتروني\nE-mail", "") + L2("رقم الجوال\nMobile", ""),
+    L2("التوقيع\nSignature", "") + cell(para("الختم / Stamp", {b: true, jc: "center", after: 0}), 4750, {span: 2})
+  ], [1900, 2850, 1900, 2850], {h: 760}));
+  // 6. rules
+  out.push(ptitle("التنظيمات المتعلقة بالتدريب التعاوني", "Cooperative Training Rules", false));
+  const RULES = [
+    ["يلتزم المتدرب بجميع ضوابط وأنظمة العمل المتبعة في المنشأة من حيث أوقات الدوام – الزي الرسمي مع مسؤوليته على المحافظة على ممتلكات المنشأة.", "The trainee must adhere the work rules at the institution in terms of working hours, wearing a uniform and being responsible for maintain the training properties & facilities."],
+    ["مدة التدريب فصل تدريبي كامل.", "The period of the training is 1 training semester."],
+    ["يحرم المتدرب إذا تغيب ٢٠٪ من مدة التدريب التعاوني بعذر أو بدون عذر.", "The trainee would be fired if he becomes absent 20%."],
+    ["يتم إشعار مشرف التدريب التعاوني الميداني في حالة وجود ملاحظة على المتدرب أو غيابه المتكرر.", "The cooperative training supervisor must be informed if there are any notices regarding the trainee such as frequent absence."],
+    ["توجيه المتدرب نحو الإدارات والأقسام حسب تخصصه لكي يمارس المهارات التي اكتسبها المتدرب أثناء تدريبه في الوحدة التدريبية.", "The trainee is directed to one of departments of the directorates to practice the applied tasks for his/her major as well as the acquired skills during the training."],
+    ["تمكين المتدرب من اكتساب أكبر قدر ممكن من المهارات والمشاركة في تنفيذ الأعمال وخدمة المنشأة كأحد موظفيها.", "Enabling the trainee to acquire as much as possible of the skills and participation in the implementation of the business and the service considering him/her as one of employees at work."]
+  ];
+  RULES.forEach((r, i) => { out.push(para(`${i + 1}) ${r[0]}`, {jc: "both", after: 20, line: 300})); out.push(para(`${i + 1}. ${r[1]}`, {ltr: true, jc: "both", after: 140, line: 280})); });
+  out.push(para("لمزيد من المعلومات الإضافية يمكن التواصل معنا من خلال مشرف التدريب التعاوني أو من خلال العناوين الموضحة في الغلاف.", {b: true, jc: "center", before: 200, after: 40}));
+  out.push(para("For more information, contact the cooperative training supervisor or see the info on the cover.", {b: true, ltr: true, jc: "center"}));
+  // 7. plan
+  out.push(ptitle("خطة التدريب التفصيلية للمتدرب", "Detailed Training Plan of the Trainee", false));
+  out.push(nameLine(t));
+  const ORD = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th", "13th", "14th", "15th"];
+  out.push(bgrid(["م\nNO", "أهم المهارات التي تدرب عليها في الوحدة التدريبية\nMost important skills of the training unit", "م\nNO", "المهارات المتوفرة في جهة التدريب\nAvailable Skills in the training Department", "أسبوع التنفيذ\nImplementation's week"], ORD.map((o, i) => [String(i + 1), "", String(i + 1), "", o]), [550, 3800, 550, 3500, 1100], {h: 520}));
+  out.push(para("1) لا يمنع من وجود مهارات في جهة التدريب تزيد عن المهارات التي تدرب عليها المتدرب في الوحدة التدريبية.", {sz: 17, after: 0}));
+  out.push(para("1. It is perfect if the training institution enhances the trainee's skills besides what the trainee already acquired.", {sz: 16, ltr: true, jc: "left", after: 40}));
+  out.push(para("2) يتم تعبئة الاستمارة بالتعاون مع مشرف التدريب التعاوني من التخصص ومشرف منشأة التدريب.", {sz: 17, after: 0}));
+  out.push(para("2. The form must be filled out with the cooperative training supervisor as well as the training institution representative.", {sz: 16, ltr: true, jc: "left", after: 0}));
+  // 8. attendance (15 weeks, 3 per page)
+  const DAYS = [["الأحد", "SUN"], ["الاثنين", "MON"], ["الثلاثاء", "TUE"], ["الأربعاء", "WED"], ["الخميس", "THU"]];
+  for (let p = 0; p < 5; p++){
+    out.push(ptitle("كشف متابعة حضور المتدرب", "Attendance Sheet of Trainee", false));
+    out.push(nameLine(t));
+    const rows = [];
+    for (let w = 0; w < 3; w++) DAYS.forEach((d, j) => rows.push([j === 0 ? String(p * 3 + w + 1) : (j === 2 ? "" : ""), d[0] + "\n" + d[1], "", "", "", "", ""]));
+    out.push(bgrid(["الأسبوع\nWeek", "اليوم\nDay", "التاريخ\nDate", "حضور\nAttendance", "ساعات التأخير\nLate hours", "انصراف\nLeaving", "ملاحظات\nNotes"], rows, [900, 1200, 1400, 1300, 1300, 1300, 2100], {h: 560, shade: [0, 1]}));
+  }
+  // 9. visits
+  out.push(ptitle("تقييم الزيارات الإشرافية للمتدرب", "Evaluation of Supervision Visitations", false));
+  out.push(nameLine(t));
+  const VI2 = [["مدى مزاولة المتدرب لتخصصه", "Practicing the major"], ["مدى رغبة المتدرب لاكتساب مزيداً من الخبرات في مجال التخصص", "The desire of the trainee for more experience in his major"], ["قدرة المتدرب على التعامل مع أدوات التواصل الالكتروني المعتمدة في التدريب", "The trainee's ability to deal with the electronic communication tools approved in the training"], ["تقديم التقارير الدورية بانتظام", "Supplying cyclic reports on time"], ["تقبل التوجيهات", "Accepting orientations"], ["المظهر الشخصي", "Personal appearance"]];
+  out.push(bgrid(["عناصر التقييم\nElements of evaluation", "درجة التقييم\nAssessment Grade", "الزيارة الأولى\nFirst Visit", "الزيارة الثانية\nSecond Visit", "الزيارة الثالثة\nThird Visit", "متوسط الدرجة\nAverage Grade"],
+    VI2.map(v => [v[0] + "\n" + v[1], "5", "", "", "", ""]).concat([["المجموع\nTotal", "30", "", "", "", ""], ["التاريخ\nDate", "", "", "", "", ""], ["توقيع المشرف الميداني بالتخصص\nSignature of the field supervisor", "", "", "", "", ""], ["توقيع مشرف جهة التدريب\nSignature of the training institution", "", "", "", "", ""]]),
+    [3700, 1000, 1200, 1200, 1200, 1200], {lc: 0, h: 560}));
+  out.push(para("• تقييم الزيارات الإشرافية للمتدرب من قبل المشرف الميداني من التخصص", {b: true, sz: 17, after: 0}));
+  out.push(para("• Evaluation of Supervision Visitations by the field supervisor of the Major", {b: true, sz: 16, ltr: true, jc: "left", after: 60}));
+  out.push(bgrid(["الزيارة\nVisit", "التوقيع\nSignature", "التاريخ\nDate", "ملاحظات\nNote"], [["الأولى\nFirst", "", "", ""], ["الثانية\nSecond", "", "", ""], ["الثالثة\nThird", "", "", ""]], [1700, 2200, 1800, 3800], {h: 500}));
+  out.push(sigTable(["اسم المشرف من التخصص\nSupervisor Name", "رئيس القسم\nHead of Department"]));
+  out.push(para("ملاحظة / عدد الزيارات يحدد حسب الحاجة والتخصص وقد يزيد عن ٣ زيارات.", {sz: 16, color: "5F7A80", before: 60, after: 0}));
+  out.push(para("Note: Number of visitations is determined based on the need and major, and it may be more than 3 visitations.", {sz: 15, color: "5F7A80", ltr: true, jc: "left"}));
+  // 10. provider evaluation
+  out.push(ptitle("تقييم المتدرب من جهة التدريب", "Evaluation of Trainee by the Training Provider", false));
+  out.push(nameLine(t));
+  const PE = [["الالتزام بساعات الدوام", "Adhering to be during working hours", 7], ["تقبل التوجيهات والإرشادات", "Accept directions and instructions", 5], ["المظهر الشخصي", "Personal appearance", 5], ["العلاقة مع زملاء العمل", "Relationship with co-workers", 5], ["درجة إتقان العمل", "Degree of mastery of work", 10], ["القدرة على عرض الأفكار", "Ability to present ideas", 4], ["التعاون والمبادرة", "Cooperation and initiative", 4]];
+  out.push(bgrid(["القدرات\nCapabilities", "الدرجة\nGrade", "الدرجة المستحقة\nObtained Grade"], PE.map(e => [e[0] + "\n" + e[1], String(e[2]), ""]).concat([["المجموع\nTotal", "40", ""]]), [5300, 1500, 2700], {lc: 0, h: 540}));
+  out.push(fieldRows([["اسم منشأة التدريب:", ent.name, "Training Provider:"], ["مقر منشأة التدريب:", "", "Training Place:"], ["المشرف من جهة التدريب:", ent.person || "", "Training Supervisor:"], ["مسمى الوظيفة:", ent.job || "", "Job Title:"], ["التوقيع:", "", "Signature:"], ["التاريخ:", "     /     /     14هـ", "Date:"], ["ختم الجهة:", "", "Official Stamp:"], ["ملاحظة:", "", "Note:"]], 400));
+  out.push(para("هل ترغب جهة التدريب توظيفه بعد تخرجه؟      ☐ نعم      ☐ لا", {b: true, sz: 18, before: 80, after: 0}));
+  out.push(para("Is the training provider willing to hire trainee after graduating?      ☐ Yes      ☐ No", {b: true, sz: 17, ltr: true, jc: "left", after: 60}));
+  out.push(para("إذا كانت الإجابة بلا أذكر الأسباب: .............................................................................", {sz: 18, after: 0}));
+  out.push(para("If the answer is (NO) mention the reasons: ....................................................................", {sz: 17, ltr: true, jc: "left"}));
+  // 11. report assessment
+  out.push(ptitle("تقييم التقرير الفني", "Assessment of the field practice report", false));
+  out.push(nameLine(t));
+  const RW = [["السيرة الذاتية والتعريف بجهة التدريب", "CV & Definition of Training Provider", 5], ["الوصف الوظيفي للمهام التي قام بها مع النماذج", "Job Description of Tasks with Models", 3], ["التعريف بالتجهيزات التي تدرب عليها", "Defining the training Equipment", 3], ["إيجابيات وسلبيات التدريب، التوصيات", "Pros & Cons of Training, Recommendations", 3], ["اسلوب الكتابة واللغة", "Writing & Language", 3]];
+  const RD = [["اسلوب عرض الآراء وتقديم التقرير (الطريقة – الوسائل – الترابط – الألفاظ)", "Type of Showing opinions & Providing the Report (Methods, Means, Correlation, Words)", 6], ["الجدية والاستعداد للمناقشة", "Seriousness & Preparing for Discussion", 2], ["المظهر الشخصي", "Personal Appearance", 2], ["الاهتمام بالسلامة المهنية", "Vocation Safety", 3]];
+  out.push(bgrid(["عناصر تقييم التقرير الفني\nElements of assessment of the technical report", "الدرجة\nGrade", "الدرجة المستحقة\nGained Grade"], RW.map(e => [e[0] + "\n" + e[1], String(e[2]), ""]).concat([["المجموع\nTotal", "17", ""]]), [6000, 1300, 2200], {lc: 0, h: 480}));
+  out.push(bgrid(["عناصر مناقشة التقرير\nElements of Report Discussion", "الدرجة\nGrade", "الدرجة المستحقة\nGained Grade"], RD.map(e => [e[0] + "\n" + e[1], String(e[2]), ""]).concat([["المجموع\nTotal", "13", ""]]), [6000, 1300, 2200], {lc: 0, h: 480}));
+  out.push(para("التقييم الإجمالي للتقرير الفني — Total Evaluation of field practice report", {b: true, jc: "center", sz: 19, after: 60}));
+  out.push(bgrid(["عناصر التقييم\nElements of Evaluation", "الدرجة النهائية\nFinal Grade", "الدرجة المكتسبة\nGained Grade", "ملاحظات\nNotes"], [["عناصر تقييم التقرير الفني\nItems of Evaluation practice report", "17", "", ""], ["مناقشة التقرير\nDissection of the Report", "13", "", ""], ["المجموع\nTotal", "30", "", ""]], [3800, 1500, 1800, 2400], {lc: 0, h: 480}));
+  out.push(sigTable(["اسم المشرف الميداني من التخصص\nSupervisor Name", "رئيس القسم\nHead of department"]));
+  // 12. final evaluation
+  out.push(ptitle("تقييم المتدرب", "Final Evaluation", false));
+  out.push(fieldRows([["الاسم:", t.name, "Name:"], ["الرقم التدريبي:", t.id, "No:"], ["التخصص:", t.spec, "Major:"], ["العام التدريبي / الفصل:", (si.year ? si.year + "هـ" : "") + (S0.semester ? " — " + S0.semester : ""), "Training year / Semester:"]]));
   out.push(para("", {after: 120}));
+  out.push(bgrid(["عناصر التقييم\nElements of evaluation", "درجة التقييم\nEvaluation Mark", "الدرجة المكتسبة رقماً\nObtained Mark (No)", "الدرجة المكتسبة كتابةً\nObtained Mark (Writing)"], [["تقييم جهة التدريب\nTraining Provider", "40", "", ""], ["تقييم مشرف التدريب\nTraining Supervisor Evaluation", "30", "", ""], ["تقييم ومناقشة التقرير النهائي\nFinal Report Evaluation", "30", "", ""], ["المجموع\nTotal", "100", "", ""]], [3700, 1600, 1800, 2400], {lc: 0, h: 640}));
+  out.push(para("", {after: 200}));
   out.push(table([
-    cell(para("اسم جهة التدريب: " + ent.name, {after: 0}), 4750) + cell(para("مقر جهة التدريب: ............................", {after: 0}), 4750),
-    cell(para("المشرف على التدريب: " + (ent.person || "............................"), {after: 0}), 4750) + cell(para("مسمى الوظيفة: " + (ent.job || "............................"), {after: 0}), 4750),
-    cell(para("التوقيع: ............................", {after: 0}), 4750) + cell(para("التاريخ:      /      /  14هـ", {after: 0}), 4750),
-    cell(para("", {after: 0}), 4750) + cell(para("ختم الجهة", {b: true, jc: "center", after: 0}), 4750)
-  ], [4750, 4750], {borders: false, h: 460}));
-  // 3) form 8
-  out.push(pageTitle("تقييم مشرف التدريب من الوحدة التدريبية", "نموذج رقم (8) — الزيارات الميدانية", false));
-  out.push(infoGrid(t, ent, sup, S));
-  out.push(para("", {after: 80}));
-  const VI = ["مدى مزاولة المتدرب لتخصصه", "مدى رغبة المتدرب في اكتساب مزيد من الخبرات في مجال التخصص", "تقديم التقارير الدورية بانتظام", "تقبل التوجيهات", "المظهر الشخصي"];
-  out.push(gridTable(["م", "عناصر التقييم", "الدرجة", "الزيارة الأولى", "الزيارة الثانية", "الزيارة الثالثة", "المتوسط"], VI.map((v, i) => [i + 1, v, 4, "", "", "", ""]).concat([["", "المجموع", 20, "", "", "", ""]]), [500, 3700, 800, 1150, 1150, 1150, 1050], {h: 520}));
-  out.push(para("", {after: 100}));
-  out.push(gridTable(["الزيارة", "التاريخ", "توقيع المشرف الميداني", "توقيع مشرف جهة التدريب", "توقيع رئيس القسم", "ملاحظات"], [["الأولى", "", "", "", "", ""], ["الثانية", "", "", "", "", ""], ["الثالثة", "", "", "", "", ""]], [1100, 1300, 1800, 1800, 1500, 2000], {leftCol: -1, h: 560, hsz: 17}));
-  out.push(para("هل ترغب جهة التدريب في توظيف المتدرب بعد تخرجه؟      ☐ نعم      ☐ لا", {b: true, before: 160, after: 40}));
-  out.push(para("إذا كانت الإجابة بلا تذكر الأسباب: .................................................................................................", {after: 40}));
-  out.push(para("ملاحظة: عدد الزيارات يحدد حسب الحاجة والتخصص وقد يزيد عن 3 زيارات.", {sz: 18, color: "5F7A80"}));
-  // 4) form 11
-  out.push(pageTitle("تقييم التقرير الفني", "نموذج رقم (11)", false));
-  out.push(infoGrid(t, ent, sup, S));
-  out.push(para("", {after: 80}));
-  const WI = [["السيرة الذاتية والتعريف بجهة التدريب", 2], ["الوصف الوظيفي للمهام التي قام بها مع النماذج", 2], ["التعريف بالتجهيزات التي تدرب عليها", 2], ["إيجابيات وسلبيات التدريب + التوصيات", 2], ["أسلوب الكتابة واللغة", 2]];
-  const DI = [["أسلوب عرض الآراء وتقديم التقرير (الطريقة – الوسائل – الترابط – الألفاظ)", 4], ["الجدية والاستعداد للمناقشة", 2], ["المظهر الشخصي", 2], ["الإجابة على الأسئلة", 2]];
-  out.push(para("أولاً: تقييم التقرير الفني المكتوب", {b: true, after: 40}));
-  out.push(gridTable(["م", "العنصر", "الدرجة", "الدرجة المكتسبة"], WI.map((e, i) => [i + 1, e[0], e[1], ""]).concat([["", "المجموع", 10, ""]]), [700, 5800, 1300, 1700], {h: 430}));
-  out.push(para("ثانياً: مناقشة التقرير", {b: true, before: 140, after: 40}));
-  out.push(gridTable(["م", "العنصر", "الدرجة", "الدرجة المكتسبة"], DI.map((e, i) => [i + 1, e[0], e[1], ""]).concat([["", "المجموع", 10, ""]]), [700, 5800, 1300, 1700], {h: 430}));
-  out.push(para("التقييم الإجمالي", {b: true, before: 140, after: 40}));
-  out.push(gridTable(["عناصر التقييم", "الدرجة النهائية", "الدرجة المكتسبة", "ملاحظات"], [["التقرير الفني المكتوب", 10, "", ""], ["مناقشة التقرير", 10, "", ""], ["المجموع", 20, "", ""]], [3300, 1700, 1800, 2700], {leftCol: 0, h: 430}));
-  out.push(signRow(["المشرف الميداني من التخصص", "رئيس القسم"]));
-  // 5) form 13
-  out.push(pageTitle("خلاصة تقييم المتدرب", "نموذج رقم (13)", false));
-  out.push(infoGrid(t, ent, sup, S));
-  out.push(para("", {after: 120}));
-  out.push(gridTable(["م", "عناصر التقييم", "درجة التقييم", "الدرجة المكتسبة رقماً", "الدرجة المكتسبة كتابةً"], [[1, "تقييم جهة التدريب", 40, "", ""], [2, "تقييم مشرف التدريب", 20, "", ""], [3, "تقييم ومناقشة التقرير النهائي", 20, "", ""], [4, "الحضور", 20, "", ""], ["", "المجموع", 100, "", ""]], [600, 3600, 1400, 1700, 2200], {h: 560}));
-  out.push(para("النتيجة:      ☐ مجتاز      ☐ غير مجتاز", {b: true, jc: "center", before: 240, after: 200}));
-  out.push(signRow(["المشرف الميداني بالتخصص", "رئيس القسم من التخصص"]));
+    cell(ml("اسم المشرف\nSupervisor Name", {b: true, jc: "center", after: 0, sz: 18}), 1900, {fill: "EEF2F3"}) + cell(para(sup.name || "", {jc: "center", after: 0}), 2850) + cell(ml("رئيس القسم\nHead of Department", {b: true, jc: "center", after: 0, sz: 18}), 1900, {fill: "EEF2F3"}) + cell(para("", {after: 0}), 2850),
+    cell(ml("التوقيع\nSignature", {b: true, jc: "center", after: 0, sz: 18}), 1900, {fill: "EEF2F3"}) + cell(para("", {after: 0}), 2850) + cell(ml("التوقيع\nSignature", {b: true, jc: "center", after: 0, sz: 18}), 1900, {fill: "EEF2F3"}) + cell(para("", {after: 0}), 2850)
+  ], [1900, 2850, 1900, 2850], {h: 700}));
+  // 13. report framework (AR)
+  out.push(ptitle("الإطار العام للتقرير الفني", "General Framework of the field practice report", false));
+  out.push(para("يقوم المتدرب بإعداد التقرير الفني للتدريب التعاوني وهو شرح لما تم إنجازه خلال الأيام التي قضاها المتدرب في جهة التدريب حيث يحتوي على الآتي:", {jc: "both", line: 300, after: 80}));
+  [["الغلاف", "يحتوي على اسم المتدرب واسم الوحدة التدريبية والقسم الذي ينتمي إليه ورقمه التدريبي واسم المشرف التدريبي في الوحدة التدريبية."], ["المحتويات", "هي عبارة عن فهرس يوضح العناوين الرئيسية وأرقام صفحاتها."], ["المقدمة", "يوضح فيها أهمية التدريب التعاوني."], ["التعريف بجهة التدريب", "يتم التعريف بجهة التدريب من خلال البنود التالية: اسم الجهة، عنوانها، طبيعة العمل، عدد الموظفين، ومعلومات عامة عنها وعن القسم الذي تم التدريب فيه، واسم المسؤول عن التدريب."], ["الجدول الزمني للتدريب التعاوني", "يتم وضع جدول زمني يحتوي على ما تم إنجازه في كل أسبوع من أسابيع التدريب."], ["المعارف والمهارات والتجارب المكتسبة", "شرح موجز للمعارف والمهارات والتجارب التي تم التدريب عليها، مع ضرورة الربط العلمي والعملي بين ما تم التدريب عليه في الكلية وواقع الخبرات والمهارات المكتسبة بجهة التدريب."]].forEach((x, i) => out.push(para([{t: `${i + 1}- ${x[0]} – `, b: true}, {t: x[1]}], {jc: "both", line: 300, after: 60})));
+  out.push(para("ملاحظات عامة:", {b: true, before: 160, after: 40}));
+  ["يقدم التقرير مطبوع مغلف لمشرف التدريب التعاوني من التخصص بالوحدة التدريبية بنهاية فترة التدريب.", "يجب مراعاة التدقيق اللغوي وسلاسة التعبير ومراعاة تحري الدقة في المصطلحات الإنجليزية وتجنب الأسلوب الإنشائي.", "يجب مراعاة قواعد التنسيق والتحرير في كتابة التقرير.", "يرفق مع التقرير السيرة الذاتية الخاصة بالمتدرب والتي يوجد نموذج لها في نهاية هذا السجل."].forEach(x => out.push(para("• " + x, {jc: "both", line: 300, after: 40})));
+  // 14. framework EN
+  out.push(ptitle("الإطار العام للتقرير الفني", "General Framework of the field practice report", false));
+  const EF = ["The cover: it contains name of trainee, name of training unit, his department, training number and name of training unit supervisor.", "Contents: they are the index that explains main titles and number of pages.", "Introduction: it explains importance of cooperative training.", "Definition of training provider: it can be identified throughout the following terms: name of authority, address, nature of work, number of employees, general information and the department in which training has done, and name of training official.", "Time Schedule of Cooperative Training: it contains what have been done during all weeks of training period.", "Gained Knowledge, Skills and Experiences: a brief explanation of knowledge, skills and experiences that received during training period, with necessity of scientific and practical relations with training period in the college and reality of experiences and skills that gained from training authority."];
+  out.push(para("The trainee prepares a field practice report of cooperative training which explains what has been done during training period and contains the following below:", {ltr: true, jc: "both", line: 300, after: 80}));
+  EF.forEach((x, i) => out.push(para(`${i + 1}- ${x}`, {ltr: true, jc: "both", line: 300, after: 60})));
+  out.push(para("General Notes:", {b: true, ltr: true, jc: "left", before: 160, after: 40}));
+  ["The report should be printed and covered, then submitted to supervisor of cooperative training at the end of training period.", "Language accuracy and fluent expression must be taken into account, also accuracy of English terminology and to avoid compositional style.", "Rules of formatting and editing must be taken in consideration upon writing of report.", "Curriculum vitae of trainee must be attached with the report; you can find a sample of it at the end of this record."].forEach(x => out.push(para("- " + x, {ltr: true, jc: "both", line: 300, after: 40})));
+  // 15. CV
+  out.push(ptitle("سيرة ذاتية", "CV", false));
+  out.push(bgrid(["البيان\nItem", "البيانات\nDetails"], [["الاسم\nName", t.name], ["رقم الجوال\nMobile", t.phone], ["هاتف المنزل\nHome", ""], ["هاتف آخر\nOther Phone No.", ""], ["بريد إلكتروني\nE-mail", ""], ["رقم بطاقة الأحوال\nID. No.", t.nid || ""], ["مكان الميلاد\nPlace of Birth", ""], ["تاريخ الميلاد\nDate of Birth", ""], ["المؤهل العلمي\nEducation", ""], ["التخصص\nMajor", t.spec], ["المعدل التراكمي\nGPA", t.gpa || ""], ["تاريخ التخرج\nDate of Graduation", t.grad || S0.gradTerm || ""]], [3000, 6500], {h: 560, shade: [0]}));
+  // 16. courses
+  out.push(ptitle("الدورات التدريبية", "Training Courses", false));
+  out.push(bgrid(["اسم الدورة\nCourse Name", "مدتها\nPeriod", "جهة التدريب\nTraining Provider"], [["", "", ""], ["", "", ""], ["", "", ""], ["", "", ""]], [4000, 1500, 4000], {h: 480}));
+  out.push(para("اللغة الإنجليزية — English", {b: true, jc: "center", sz: 20, after: 60}));
+  out.push(bgrid(["تحدث\nSpeaking", "قراءة\nReading", "كتابة\nWriting"], [["○ جيد جداً very good\n○ جيد good\n○ ضعيف Poor", "○ جيد جداً very good\n○ جيد good\n○ ضعيف Poor", "○ جيد جداً very good\n○ جيد good\n○ ضعيف Poor"]], [3166, 3167, 3167], {h: 900}));
+  out.push(bgrid(["الخبرة العملية\nWork Experience"], [[""], [""], [""], [""], [""]], [9500], {h: 440}));
+  out.push(bgrid(["معلومات إضافية\nAdditional Information"], [[""], [""], [""]], [9500], {h: 440}));
+  // 17. provider questionnaire
+  out.push(ptitle("استبانة استطلاع رأي جهة التدريب عن التدريب التعاوني", "Training Provider Questionnaire of the Cooperative Training", false));
+  out.push(para("أخي مشرف جهة التدريب: أهلاً بك ونود معرفة وجهة نظركم عن التدريب التعاوني، نأمل تعاونكم معنا في إعطاء المعلومات الدقيقة حتى نتمكن من تحسين وتطوير الأداء في المستقبل مقدرين لكم جهودكم المبذولة. الدرجة خمسة (٥) تعني أعلى تقدير والدرجة واحد (١) تعني أقل تقدير.", {jc: "both", sz: 18, line: 280, after: 40}));
+  out.push(para("Dear supervisor of training provider, we would like to let us know your opinions regarding the cooperative training. Please rate the following on a scale of (1) poor to (5) excellent. Thank you for your response.", {ltr: true, jc: "both", sz: 17, line: 260, after: 100}));
+  out.push(questionnaire(EN_Q));
+  // 18. trainee questionnaire
+  out.push(ptitle("استبانة استطلاع رأي المتدرب عن التدريب التعاوني", "Trainee Questionnaire of the Cooperative Training", false));
+  out.push(para("أخي المتدرب: أهلاً بك عزيزي المتدرب، مع شكرنا الجزيل لتعاونكم، ونود معرفة وجهة نظركم عن التدريب التعاوني، نأمل تعاونك معنا في إعطاء المعلومات الدقيقة حتى نتمكن من تحسين وتطوير الأداء في المستقبل مقدرين لكم جهودكم المبذولة. الدرجة خمسة (٥) تعني أعلى تقدير والدرجة واحد (١) تعني أقل تقدير.", {jc: "both", sz: 18, line: 280, after: 40}));
+  out.push(para("Dear trainee, we would like kindly to let us know about your opinion in terms of the cooperative training & we hope you supply us the accurate information in order to improve and develop the performance in the future. Please rate the following on a scale of (1) poor to (5) excellent.", {ltr: true, jc: "both", sz: 17, line: 260, after: 100}));
+  out.push(questionnaire(TR_Q));
+  out.push(para("ملاحظات / Notes:", {b: true, before: 120, after: 40}));
+  for (let i = 0; i < 4; i++) out.push(para("....................................................................................................................................", {after: 40}));
+  out.push(para("مع تمنياتنا للجميع بالتوفيق — Best regards", {b: true, jc: "center", before: 120}));
   return out.join("");
 }
 async function buildRecordsDocx(items, S){
   const zip = await baseDocxZip(S);
+  zip.file("word/header1.xml", recordHeaderXml());
+  zip.file("word/footer1.xml", EMPTY_FTR);
   const body = items.map((it, i) => recordPages(it.t, it.ent, it.sup || {}, S, i === 0)).join("");
-  zip.file("word/document.xml", docXml(body));
+  zip.file("word/document.xml", docXml(body, "1700"));
   return zip.generateAsync({type: "uint8array", compression: "DEFLATE"});
 }
 
@@ -873,10 +1067,10 @@ function previewLetters(ids){
 function previewRecords(ids){
   const items = pickItems(ids);
   if (!items.length){ msg($("outMsg"), "اختر جهة لمتدرب واحد على الأقل.", "err"); return; }
-  const shown = items.slice(0, Math.min(PV_MAX, 5));
-  const html = previewPages(shown.map((it, i) => recordPages(it.t, it.ent, it.sup, S, i === 0)).join(""), headerXml(S), footerXml(S));
+  const shown = items.slice(0, 1);
+  const html = previewPages(shown.map((it, i) => recordPages(it.t, it.ent, it.sup, S, i === 0)).join(""), recordHeaderXml(), EMPTY_FTR);
   openPreview(items.length === 1 ? "معاينة سجل: " + items[0].t.name : `معاينة السجلات (${items.length} متدرب)`, html,
-    items.length > shown.length ? `تُعرض أول ${shown.length} سجلات — الملف المحمّل يحتوي الكل` : "", el => downloadRecords(ids, el));
+    items.length > 1 ? `يُعرض سجل أول متدرب فقط — الملف المحمّل يحتوي ${items.length} سجلاً` : "", el => downloadRecords(ids, el));
 }
 function previewRegister(){
   if (!trainees.length) return;
