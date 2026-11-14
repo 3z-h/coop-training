@@ -179,18 +179,18 @@ details .in{padding:0 16px 16px}
   </div>
 
   <div class="card" id="resetCard">
-    <h2>تصفير البيانات</h2>
+    <h2>إعادة ضبط البيانات</h2>
     <div class="row">
-      <button class="btn2" id="rstSem" style="background:#fff3df;color:#a15c00">🔄 تصفير بيانات الفصل</button>
+      <button class="btn2" id="rstSem" style="background:#fff3df;color:#a15c00">🔄 إعادة ضبط بيانات الفصل</button>
       <span style="font-size:13px;color:var(--muted)">يمسح المتدربين واختيارات الجهات والمشرفين الميدانيين، ويُبقي الجهات وإعدادات الخطاب.</span>
     </div>
     <div class="row" style="margin-top:8px">
-      <button class="btn2" id="rstAll" style="background:#fde8e7;color:#b42318">🗑 تصفير كامل</button>
+      <button class="btn2" id="rstAll" style="background:#fde8e7;color:#b42318">🗑 إعادة ضبط كاملة</button>
       <span style="font-size:13px;color:var(--muted)">يرجع كل شيء كما كان أول مرة: يمسح المتدربين والاختيارات والمشرفين، ويعيد الجهات والإعدادات الافتراضية.</span>
     </div>
     <div id="rstConfirm" class="hidden" style="margin-top:12px;padding:12px;border-radius:10px;background:#fde8e7;color:#b42318">
       <b id="rstText"></b>
-      <div class="row" style="margin-top:8px"><button class="btn" id="rstYes" style="background:#b42318">نعم، صفّر</button><button class="btn2" id="rstNo">إلغاء</button></div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="rstYes" style="background:#b42318">نعم، أعد الضبط</button><button class="btn2" id="rstNo">إلغاء</button></div>
     </div>
     <div class="msg" id="rstMsg"></div>
   </div>
@@ -1289,7 +1289,7 @@ $("rstYes").addEventListener("click", () => {
   $("rstConfirm").classList.add("hidden");
   $("upMsg").className = "msg";
   ["st1", "st2", "st3"].forEach(id => $(id).classList.remove("done"));
-  msg($("rstMsg"), rstMode === "all" ? "تم التصفير الكامل." : "تم تصفير بيانات الفصل. ارفع تقرير رايات الجديد.", "ok");
+  msg($("rstMsg"), rstMode === "all" ? "تمت إعادة الضبط الكاملة." : "تمت إعادة ضبط بيانات الفصل. ارفع تقرير رايات الجديد.", "ok");
   rstMode = null; window.scrollTo({top: 0, behavior: "smooth"});
 });
 $("dlLetters").addEventListener("click", () => downloadLetters(null));
